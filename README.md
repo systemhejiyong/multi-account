@@ -4,10 +4,17 @@
 
 ## 下载（v1.0.0）
 
+**Gitee**
+
 - [发行版页面](https://gitee.com/hogan_dev/multi-account/releases/tag/v1.0.0)
 - [Mac：mac-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.0/mac-multi-account.zip)
 - [Windows：win-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.0/win-multi-account.zip)
 
+**GitHub（镜像）**
+
+- [发行版页面](https://github.com/systemhejiyong/multi-account/releases/tag/v1.0.0)
+- [Mac：mac-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.0/mac-multi-account.zip)
+- [Windows：win-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.0/win-multi-account.zip)
 
 ## Mac
 
@@ -33,6 +40,20 @@
 - 桌面 / 文档下的 `AppAccounts`
 
 结构：`AppAccounts/应用名/账号名/`。删除某个账号文件夹即可清除该账号登录态。
+
+## 远程仓库
+
+双远程，内容对齐（以 `main` 为准）：
+
+- Gitee：https://gitee.com/hogan_dev/multi-account （源仓 / Release `v1.0.0`）
+- GitHub：https://github.com/systemhejiyong/multi-account （镜像）
+
+```bash
+git remote add origin https://gitee.com/hogan_dev/multi-account.git   # 若尚无
+git remote add github https://github.com/systemhejiyong/multi-account.git
+git push origin main
+git push github main
+```
 
 ## 说明
 
