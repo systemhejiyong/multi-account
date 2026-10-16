@@ -2,6 +2,13 @@
 
 一键为 WorkBuddy、Cursor 等应用创建多账号快捷方式：独立数据目录隔离登录，Mac/Windows 点选生成，默认 account1/account2，无需命令行。
 
+## 下载（v1.0.0）
+
+- [发行版页面](https://gitee.com/hogan_dev/multi-account/releases/tag/v1.0.0)
+- [Mac：mac-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.0/mac-multi-account.zip)
+- [Windows：win-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.0/win-multi-account.zip)
+
+
 ## Mac
 
 进入 `mac/` 目录，双击 **多账号快捷方式.app**。
