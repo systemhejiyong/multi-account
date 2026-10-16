@@ -1,0 +1,21 @@
+#!/bin/bash
+DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+PARENT="$(cd "$DIR/.." && pwd)"
+MAIN="$PARENT/多账号快捷方式.app"
+
+/usr/bin/osascript <<'AS' >/dev/null 2>&1 || true
+display dialog "接下来会解除系统拦截，并打开「多账号快捷方式」。
+
+若仍提示无法打开：请对图标「右键 → 打开」。" with title "首次打开" buttons {"继续"} default button "继续"
+AS
+
+xattr -cr "$MAIN" 2>/dev/null || true
+xattr -dr com.apple.quarantine "$MAIN" 2>/dev/null || true
+xattr -cr "$PARENT" 2>/dev/null || true
+chmod +x "$MAIN/Contents/MacOS/MacAccountLauncher" 2>/dev/null || true
+
+if [[ ! -d "$MAIN" ]]; then
+  osascript -e 'display dialog "找不到「多账号快捷方式.app」，请确认和解压后的文件夹在一起。" buttons {"好"} default button "好"'
+  exit 1
+fi
+open "$MAIN"

@@ -1,0 +1,21 @@
+#!/bin/bash
+# Fast GUI entry — osascript dialogs only (no Terminal, no Tk)
+DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
+SCRIPT="$DIR/mac_account.py"
+LOG="$HOME/Library/Logs/mac-multi-account.log"
+mkdir -p "$(dirname "$LOG")"
+
+PYTHON=""
+for c in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+  if [[ -x "$c" ]]; then PYTHON="$c"; break; fi
+done
+if [[ -z "$PYTHON" ]]; then
+  PYTHON="$(/usr/bin/env which python3 2>/dev/null || true)"
+fi
+
+if [[ -z "$PYTHON" || ! -x "$PYTHON" ]]; then
+  osascript -e 'display dialog "本机没有 python3，无法打开。\n请先安装 Python 3 后再试。" with title "多账号快捷方式" buttons {"好"} default button "好"'
+  exit 1
+fi
+
+exec "$PYTHON" "$SCRIPT" gui >>"$LOG" 2>&1
