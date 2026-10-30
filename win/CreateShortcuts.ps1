@@ -371,6 +371,8 @@ function Prepare-WorkBuddyDirs([string]$accountDir) {
     $runtime = Join-Path $accountDir 'runtime-home'
     Ensure-Dir (Join-Path $runtime 'AppData\Roaming\CodeBuddyExtension\Data\Public\auth')
     Ensure-Dir (Join-Path $runtime 'AppData\Local')
+    # WorkBuddy ignores CLI --user-data-dir and writes to %USERPROFILE%\.workbuddy\app
+    Ensure-Dir (Join-Path $runtime '.workbuddy\app')
     foreach ($name in @('Desktop','Downloads','Documents','Pictures','Videos','Music')) {
         $src = Join-Path $USERPROFILE $name
         $dst = Join-Path $runtime $name
@@ -384,12 +386,17 @@ function Prepare-ElectronDirs([string]$accountDir) {
 }
 
 function Write-WorkBuddyVbs([string]$path, [string]$profile, [string]$accountDir, [string]$exe) {
+    # WorkBuddy (Windows) stores state under %USERPROFILE%\.workbuddy\app and largely
+    # ignores --user-data-dir. Isolation requires rewriting USERPROFILE/HOME for the
+    # child process. VBScript Environment("Process") + shell.Run does NOT stick for
+    # this Electron app; launching via cmd.exe "set ... && start" does (verified).
     $electron = Join-Path $accountDir 'app'
     $runtime = Join-Path $accountDir 'runtime-home'
     $realHome = $USERPROFILE
     $appdata = Join-Path $runtime 'AppData\Roaming'
     $localappdata = Join-Path $runtime 'AppData\Local'
     $authDir = Join-Path $appdata 'CodeBuddyExtension\Data\Public\auth'
+    $wbApp = Join-Path $runtime '.workbuddy\app'
     if ($runtime.Length -ge 2 -and $runtime[1] -eq ':') {
         $homedrive = $runtime.Substring(0,2)
         $homepath = if ($runtime.Length -gt 2) { $runtime.Substring(2) } else { '\' }
@@ -398,16 +405,21 @@ function Write-WorkBuddyVbs([string]$path, [string]$profile, [string]$accountDir
         $homepath = $runtime
     }
     function Esc([string]$s) { return $s.Replace('"','""') }
+    function EscCmd([string]$s) {
+        # for embedding inside cmd /c "..." — escape meta chars lightly
+        return $s.Replace('^','^^').Replace('&','^&').Replace('|','^|').Replace('<','^<').Replace('>','^>')
+    }
     $lines = @(
         "' WorkBuddy multi-account launcher (no console)"
         "' profile: $profile"
+        "' Uses cmd setenv+start — VBS Process env is ignored by WorkBuddy.exe"
         'Option Explicit'
-        'Dim shell, fso, env, accountDir, electronDir, runtimeHome, realHome, exePath'
-        'Dim appDataDir, localAppDataDir, authDir, cmd, folderName, linkPath, targetPath, q'
+        'Dim shell, fso, accountDir, electronDir, runtimeHome, realHome, exePath'
+        'Dim appDataDir, localAppDataDir, authDir, wbAppDir, cmd, folderName, linkPath, targetPath, q'
+        'Dim homeDrive, homePath'
         ''
         'Set shell = CreateObject("WScript.Shell")'
         'Set fso = CreateObject("Scripting.FileSystemObject")'
-        'Set env = shell.Environment("Process")'
         'q = Chr(34)'
         ''
         ('accountDir = "' + (Esc $accountDir) + '"')
@@ -418,6 +430,9 @@ function Write-WorkBuddyVbs([string]$path, [string]$profile, [string]$accountDir
         ('appDataDir = "' + (Esc $appdata) + '"')
         ('localAppDataDir = "' + (Esc $localappdata) + '"')
         ('authDir = "' + (Esc $authDir) + '"')
+        ('wbAppDir = "' + (Esc $wbApp) + '"')
+        ('homeDrive = "' + (Esc $homedrive) + '"')
+        ('homePath = "' + (Esc $homepath) + '"')
         ''
         'If Not fso.FolderExists(electronDir) Then fso.CreateFolder(electronDir)'
         'If Not fso.FolderExists(accountDir & "\auth") Then'
@@ -432,6 +447,8 @@ function Write-WorkBuddyVbs([string]$path, [string]$profile, [string]$accountDir
         'EnsureFolder appDataDir & "\CodeBuddyExtension\Data"'
         'EnsureFolder appDataDir & "\CodeBuddyExtension\Data\Public"'
         'EnsureFolder authDir'
+        'EnsureFolder runtimeHome & "\.workbuddy"'
+        'EnsureFolder wbAppDir'
         ''
         'For Each folderName In Array("Desktop", "Downloads", "Documents", "Pictures", "Videos", "Music")'
         '  targetPath = realHome & "\" & folderName'
@@ -443,19 +460,20 @@ function Write-WorkBuddyVbs([string]$path, [string]$profile, [string]$accountDir
         '  End If'
         'Next'
         ''
-        'env("USERPROFILE") = runtimeHome'
-        'env("HOME") = runtimeHome'
-        ('env("HOMEDRIVE") = "' + (Esc $homedrive) + '"')
-        ('env("HOMEPATH") = "' + (Esc $homepath) + '"')
-        'env("APPDATA") = appDataDir'
-        'env("LOCALAPPDATA") = localAppDataDir'
-        'env("WORKBUDDY_CONFIG_DIR") = accountDir'
-        'env("CODEBUDDY_CONFIG_DIR") = accountDir'
-        'env("WORKBUDDY_USER_DATA_DIR") = electronDir'
-        'env("ELECTRON_RUN_AS_NODE") = ""'
-        ''
-        'cmd = q & exePath & q & " --user-data-dir=" & q & electronDir & q & " --new-window"'
-        'shell.Run cmd, 1, False'
+        "' Rewrite USERPROFILE via cmd so WorkBuddy inherits it (shell.Run alone does not)."
+        'cmd = "cmd /c " & q & _'
+        '  "set USERPROFILE=" & runtimeHome & _'
+        '  "&& set HOME=" & runtimeHome & _'
+        '  "&& set HOMEDRIVE=" & homeDrive & _'
+        '  "&& set HOMEPATH=" & homePath & _'
+        '  "&& set APPDATA=" & appDataDir & _'
+        '  "&& set LOCALAPPDATA=" & localAppDataDir & _'
+        '  "&& set WORKBUDDY_CONFIG_DIR=" & accountDir & _'
+        '  "&& set CODEBUDDY_CONFIG_DIR=" & accountDir & _'
+        '  "&& set WORKBUDDY_USER_DATA_DIR=" & wbAppDir & _'
+        '  "&& set ELECTRON_RUN_AS_NODE=" & _'
+        '  "&& start " & q & q & " " & q & exePath & q & " --new-window" & q'
+        'shell.Run cmd, 0, False'
         'WScript.Quit 0'
         ''
         'Sub EnsureFolder(path)'
@@ -848,7 +866,8 @@ function Invoke-Create {
                     Prepare-WorkBuddyDirs $accountDir
                     $vbsPath = Join-Path $accountDir 'launch.vbs'
                     Write-WorkBuddyVbs $vbsPath $plan.Profile $accountDir $exe
-                    Create-ShortcutLnk $lnkPath $vbsPath '' $accountDir $exe
+                    $wscript = Join-Path $env:SystemRoot 'System32\wscript.exe'
+                    Create-ShortcutLnk $lnkPath $wscript ("//nologo `"$vbsPath`"") $accountDir $exe
                 }
                 'chrome' {
                     Ensure-Dir $accountDir
