@@ -30,12 +30,24 @@ function Normalize-Id([string]$raw) {
 }
 
 function Get-DesktopPath {
-    $d = Join-Path $USERPROFILE 'Desktop'
-    if (Test-Path $d -PathType Container) { return $d }
-    $od = Join-Path $USERPROFILE 'OneDrive\Desktop'
-    if (Test-Path $od -PathType Container) { return $od }
-    New-Item -ItemType Directory -Path $d -Force | Out-Null
-    return $d
+    # Prefer shell Known Folder — Chinese Windows uses 桌面, not Desktop;
+    # a leftover English Desktop folder would otherwise steal the write.
+    try {
+        $known = [Environment]::GetFolderPath([Environment+SpecialFolder]::Desktop)
+        if ($known -and (Test-Path -LiteralPath $known -PathType Container)) { return $known }
+    } catch {}
+    $zh = [string]::Concat([char]0x684C, [char]0x9762)  # 桌面
+    foreach ($cand in @(
+        (Join-Path $USERPROFILE $zh),
+        (Join-Path $USERPROFILE 'Desktop'),
+        (Join-Path $USERPROFILE 'OneDrive\Desktop'),
+        (Join-Path $USERPROFILE ('OneDrive\' + $zh))
+    )) {
+        if (Test-Path -LiteralPath $cand -PathType Container) { return $cand }
+    }
+    $fallback = Join-Path $USERPROFILE 'Desktop'
+    New-Item -ItemType Directory -Path $fallback -Force | Out-Null
+    return $fallback
 }
 
 function Get-DrivesWithFree {
@@ -900,13 +912,15 @@ function Invoke-Create {
     }
 
     $done = @("已创建 $($results.Count) 个 $($tool.Name) 快捷方式：", '')
+    $done += "写入目录：$desktop"
+    $done += ''
     foreach ($item in $results) {
         $done += "* $($item.Display)"
         $done += "  数据：$($item.DataDir)"
-        $done += "  桌面：$(Split-Path $item.Shortcut -Leaf)"
+        $done += "  快捷方式：$($item.Shortcut)"
     }
     $done += ''
-    $done += '去桌面双击即可打开对应账号（不会出现黑色命令行窗口）。'
+    $done += '请到上面「写入目录」打开对应快捷方式（中文系统桌面可能是「桌面」文件夹）。'
     if ($tool.Mode -eq 'workbuddy') {
         $done += ''
         $done += '重要：请完全退出原来的 WorkBuddy 后，只用新快捷方式打开。'
