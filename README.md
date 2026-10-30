@@ -2,19 +2,23 @@
 
 一键为 WorkBuddy、Cursor 等应用创建多账号快捷方式：独立数据目录隔离登录，Mac/Windows 点选生成，默认 account1/account2，无需命令行。
 
-## 下载（v1.0.0）
+## 下载（v1.0.1）
 
 **Gitee**
 
-- [发行版页面](https://gitee.com/hogan_dev/multi-account/releases/tag/v1.0.0)
-- [Mac：mac-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.0/mac-multi-account.zip)
-- [Windows：win-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.0/win-multi-account.zip)
+- [发行版页面](https://gitee.com/hogan_dev/multi-account/releases/tag/v1.0.1)
+- [Mac：mac-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.1/mac-multi-account.zip)
+- [Windows：win-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.1/win-multi-account.zip)
 
 **GitHub（镜像）**
 
-- [发行版页面](https://github.com/systemhejiyong/multi-account/releases/tag/v1.0.0)
-- [Mac：mac-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.0/mac-multi-account.zip)
-- [Windows：win-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.0/win-multi-account.zip)
+- [发行版页面](https://github.com/systemhejiyong/multi-account/releases/tag/v1.0.1)
+- [Mac：mac-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.1/mac-multi-account.zip)
+- [Windows：win-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.1/win-multi-account.zip)
+
+### v1.0.1 修复
+
+- **Windows WorkBuddy 双击快捷方式无反应**：WorkBuddy 实际把数据写在 `%USERPROFILE%\.workbuddy\app`，忽略 `--user-data-dir`；旧版 `launch.vbs` 用 VBS Process 环境变量 + `shell.Run`，子进程吃不到隔离目录。现改为 `cmd /c set USERPROFILE=… && start …`，并预创建 `runtime-home\.workbuddy\app`，快捷方式指向 `wscript.exe`。重新运行本工具生成快捷方式即可；已有 WorkBuddy 请先完全退出再只用新快捷方式打开。
 
 ## Mac
 
