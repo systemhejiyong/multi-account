@@ -2,19 +2,24 @@
 
 一键为 WorkBuddy、Cursor 等应用创建多账号快捷方式：独立数据目录隔离登录，Mac/Windows 点选生成，默认 account1/account2，无需命令行。
 
-## 下载（v1.0.2）
+## 下载（v1.0.3）
 
 **Gitee**
 
-- [发行版页面](https://gitee.com/hogan_dev/multi-account/releases/tag/v1.0.2)
-- [Mac：mac-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.2/mac-multi-account.zip)
-- [Windows：win-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.2/win-multi-account.zip)
+- [发行版页面](https://gitee.com/hogan_dev/multi-account/releases/tag/v1.0.3)
+- [Mac：mac-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.3/mac-multi-account.zip)
+- [Windows：win-multi-account.zip](https://gitee.com/hogan_dev/multi-account/releases/download/v1.0.3/win-multi-account.zip)
 
 **GitHub（镜像）**
 
-- [发行版页面](https://github.com/systemhejiyong/multi-account/releases/tag/v1.0.2)
-- [Mac：mac-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.2/mac-multi-account.zip)
-- [Windows：win-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.2/win-multi-account.zip)
+- [发行版页面](https://github.com/systemhejiyong/multi-account/releases/tag/v1.0.3)
+- [Mac：mac-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.3/mac-multi-account.zip)
+- [Windows：win-multi-account.zip](https://github.com/systemhejiyong/multi-account/releases/download/v1.0.3/win-multi-account.zip)
+
+### v1.0.3 修复
+
+- **Grok Bot 多开失效**：应用内「切换账号」后仍单实例锁；CLI `--user-data-dir` 会被结算回 `%APPDATA%\Grok Bot`，第二开直接退出。现改为启动前设置官方 `SAND_USER_DATA_DIR`（及 `SAND_DATA_ROOT`），Windows 快捷方式走 `wscript`+`cmd setenv`，Mac launcher 同步 export。请完全退出所有 Grok Bot 后只用新快捷方式；每个窗口分别登录即可同时开。
+- 仍含 v1.0.2：中文桌面路径；v1.0.1：WorkBuddy `USERPROFILE` 隔离。
 
 ### v1.0.2 修复
 

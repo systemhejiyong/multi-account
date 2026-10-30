@@ -376,6 +376,21 @@ def _find_bundle_app_exe(app: Path) -> Optional[Path]:
     return _find_bundle_executable(app)
 
 
+
+def launcher_grok(profile: str, account_dir: Path, exe: Path) -> str:
+    """Grok Bot: SAND_USER_DATA_DIR before single-instance lock (not CLI --user-data-dir)."""
+    return textwrap.dedent(
+        f"""\
+        #!/bin/bash
+        set -euo pipefail
+        export SAND_USER_DATA_DIR="{account_dir}"
+        export SAND_DATA_ROOT="{account_dir}/sand-data"
+        mkdir -p "$SAND_USER_DATA_DIR" "$SAND_DATA_ROOT"
+        exec "{exe}" --new-window "$@"
+        """
+    )
+
+
 def launcher_electron_generic(profile: str, account_dir: Path, exe: Path) -> str:
     return textwrap.dedent(
         f"""\
@@ -459,9 +474,9 @@ TOOLS["qoderwork"] = ToolSpec(
 TOOLS["grok"] = ToolSpec(
     id="grok",
     name="Grok Bot",
-    description="Grok Bot, 独立 user-data",
+    description="Grok Bot, SAND_USER_DATA_DIR 官方隔离多开",
     detect=detect_grok,
-    make_launcher=launcher_electron_generic,
+    make_launcher=launcher_grok,
     prepare_dirs=prepare_electron_dirs,
 )
 
@@ -474,7 +489,7 @@ PRESET_META = {
     "chrome": {"mode": "chrome", "mode_tag": "Chrome配置", "desc": "Chrome, 独立用户数据"},
     "qoder": {"mode": "electron", "mode_tag": "user-data", "desc": "Qoder, 独立 user-data"},
     "qoderwork": {"mode": "electron", "mode_tag": "user-data", "desc": "QoderWork, 独立 user-data"},
-    "grok": {"mode": "electron", "mode_tag": "user-data", "desc": "Grok Bot, 独立 user-data"},
+    "grok": {"mode": "grokbot", "mode_tag": "SAND隔离", "desc": "Grok Bot, SAND_USER_DATA_DIR 官方隔离多开"},
 }
 
 _SKIP_APP_NAMES = {

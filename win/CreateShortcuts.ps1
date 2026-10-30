@@ -102,7 +102,7 @@ function New-Junction([string]$link, [string]$target) {
 }
 
 # --- Built-in presets (special isolation) ---
-# Mode: workbuddy | electron | chrome | generic
+# Mode: workbuddy | grokbot | electron | chrome | generic
 $script:PresetRules = @(
     @{ Id='workbuddy'; Names=@('WorkBuddy','CodeBuddy'); Match=@('\workbuddy\','workbuddy.exe','\codebuddy\'); Mode='workbuddy'; Desc='腾讯龙虾，HOME隔离多账号' }
     @{ Id='cursor'; Names=@('Cursor'); Match=@('\cursor\','cursor.exe'); Mode='electron'; Desc='Cursor，独立 user-data' }
@@ -110,7 +110,7 @@ $script:PresetRules = @(
     @{ Id='chrome'; Names=@('Google Chrome','Chrome'); Match=@('chrome\application\chrome.exe','google\chrome'); Mode='chrome'; Desc='Chrome，独立用户数据' }
     @{ Id='qoderwork'; Names=@('QoderWork','Qoder Work','QoderWork CN'); Match=@('qoderwork','qoder work'); Mode='electron'; Desc='QoderWork，独立 user-data' }
     @{ Id='qoder'; Names=@('Qoder'); Match=@('\qoder\qoder.exe','\programs\qoder\'); Mode='electron'; Desc='Qoder，独立 user-data' }
-    @{ Id='grokbot'; Names=@('Grok Bot','GrokBot'); Match=@('grok bot\grok bot.exe','\grokbot\','grok bot.exe'); Mode='electron'; Desc='Grok Bot，独立 user-data' }
+    @{ Id='grokbot'; Names=@('Grok Bot','GrokBot'); Match=@('grok bot\grok bot.exe','\grokbot\','grok bot.exe'); Mode='grokbot'; Desc='Grok Bot，SAND_USER_DATA_DIR 官方隔离多开' }
 )
 
 function Resolve-Preset([string]$name, [string]$exePath) {
@@ -512,6 +512,34 @@ function Write-WorkBuddyVbs([string]$path, [string]$profile, [string]$accountDir
     [System.IO.File]::WriteAllText($path, ($lines -join "`r`n"), $utf8)
 }
 
+function Write-GrokBotVbs([string]$path, [string]$profile, [string]$accountDir, [string]$exe) {
+    # Grok Bot ignores CLI --user-data-dir for single-instance + userData settlement
+    # (locks on %APPDATA%\Grok Bot). Official isolation: SAND_USER_DATA_DIR before lock.
+    # Use cmd setenv+start so the Electron process inherits the env (verified 2026-10-30).
+    function Esc([string]$s) { return $s.Replace('"','""') }
+    $lines = @(
+        "' Grok Bot multi-account launcher (no console)"
+        "' profile: $profile"
+        "' Sets SAND_USER_DATA_DIR so requestSingleInstanceLock is per profile"
+        'Option Explicit'
+        'Dim shell, fso, q, exePath, dataDir, cmd'
+        'Set shell = CreateObject("WScript.Shell")'
+        'Set fso = CreateObject("Scripting.FileSystemObject")'
+        'q = Chr(34)'
+        ('exePath = "' + (Esc $exe) + '"')
+        ('dataDir = "' + (Esc $accountDir) + '"')
+        'If Not fso.FolderExists(dataDir) Then fso.CreateFolder(dataDir)'
+        'cmd = "cmd /c " & q & _'
+        '  "set SAND_USER_DATA_DIR=" & dataDir & _'
+        '  "&& set SAND_DATA_ROOT=" & dataDir & "\sand-data" & _'
+        '  "&& start " & q & q & " " & q & exePath & q & q'
+        'shell.Run cmd, 0, False'
+        'WScript.Quit 0'
+    )
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($path, ($lines -join "`r`n"), $utf8)
+}
+
 function Write-GenericVbs([string]$path, [string]$accountDir, [string]$exe, [string]$extraArgs) {
     function Esc([string]$s) { return $s.Replace('"','""') }
     $argPart = if ($extraArgs) { ' & " " & "' + (Esc $extraArgs) + '"' } else { '' }
@@ -711,6 +739,7 @@ function Show-AppPickerForm([object[]]$apps) {
             $tag = if ($a.IsPreset) { '[推荐] ' } else { '' }
             $modeTag = '通用'
             if ($a.Mode -eq 'workbuddy') { $modeTag = 'HOME隔离' }
+            elseif ($a.Mode -eq 'grokbot') { $modeTag = 'SAND隔离' }
             elseif ($a.Mode -eq 'electron') { $modeTag = 'user-data' }
             elseif ($a.Mode -eq 'chrome') { $modeTag = 'Chrome配置' }
             [void]$script:PickerList.Items.Add(("$tag" + $a.Name + '  —  ' + $modeTag + '  ·  ' + $a.Desc))
@@ -881,6 +910,13 @@ function Invoke-Create {
                     $wscript = Join-Path $env:SystemRoot 'System32\wscript.exe'
                     Create-ShortcutLnk $lnkPath $wscript ("//nologo `"$vbsPath`"") $accountDir $exe
                 }
+                'grokbot' {
+                    Ensure-Dir $accountDir
+                    $vbsPath = Join-Path $accountDir 'launch.vbs'
+                    Write-GrokBotVbs $vbsPath $plan.Profile $accountDir $exe
+                    $wscript = Join-Path $env:SystemRoot 'System32\wscript.exe'
+                    Create-ShortcutLnk $lnkPath $wscript ("//nologo `"$vbsPath`"") $accountDir $exe
+                }
                 'chrome' {
                     Ensure-Dir $accountDir
                     $args = "--user-data-dir=`"$accountDir`" --no-first-run --no-default-browser-check --new-window"
@@ -925,6 +961,12 @@ function Invoke-Create {
         $done += ''
         $done += '重要：请完全退出原来的 WorkBuddy 后，只用新快捷方式打开。'
         $done += '每个窗口第一次要分别登录；登录态已按账号隔离，不会再串号。'
+    }
+    if ($tool.Mode -eq 'grokbot') {
+        $done += ''
+        $done += '重要：请完全退出所有 Grok Bot 窗口后，只用新快捷方式打开。'
+        $done += '每个窗口是独立实例（可同时开）；应用内「切换账号」是同窗口换号，不是多开。'
+        $done += '隔离靠 SAND_USER_DATA_DIR，不要再用旧的 --user-data-dir 快捷方式。'
     }
     if ($tool.Mode -eq 'generic') {
         $done += ''
